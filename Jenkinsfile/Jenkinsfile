@@ -1,0 +1,20 @@
+node {
+
+	withMaven(maven:'maven') {
+ 
+        stage('checkout') {
+            git url: 'https://github.com/haroonzone/hello-dropwizard'
+        }
+
+
+	stage('buildtest') {
+            def pomfile = readMavenPom file:'pom.xml'
+            sh 'mvn clean package'
+        }
+
+	stage('builddocker') { 
+		                def app = docker.build "ekdnata"
+				app.push 'master'
+	} 
+
+} 
