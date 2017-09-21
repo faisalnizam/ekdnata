@@ -19,8 +19,7 @@ RUN apt-get -y --force-yes install vim\
  expect\
  git\
  pkg-config\
- nodejs
-
+ rsync
 
 # Setting Some Environment Varianle to Install Java 
 ENV java_version 1.8.0_11
