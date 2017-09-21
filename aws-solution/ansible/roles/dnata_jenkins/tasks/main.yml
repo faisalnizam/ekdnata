@@ -1,0 +1,28 @@
+---
+- name: Install the epel repository 
+  yum:
+      name: epel-release
+      state: present
+
+- name: add the jenkins repository to centos
+  copy: src=../templates/jenkins.repo
+        dest=/etc/yum.repos.d/
+        owner=root group=root mode=0644
+
+- name: import jenkins key
+  rpm_key:  
+    state: present
+    key: https://jenkins-ci.org/redhat/jenkins-ci.org.key
+
+- name: Install Jenkins main 
+  yum:
+      name: jenkins
+      state: present
+  with_items:
+      - openssl
+
+- name: Install Jenkins main 
+  service:
+      name: jenkins
+      pattern: /usr/lib/jenkins
+      state: started

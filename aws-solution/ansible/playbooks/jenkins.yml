@@ -1,0 +1,6 @@
+---
+- hosts: all
+  roles:
+    - java 
+    - mount_disk
+    - dnata_jenkins
