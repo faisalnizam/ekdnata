@@ -39,11 +39,11 @@ node ("DNATA Sample Jenkins Job") {
 
     	stage('BuildnPush') {
         	sh "pwd"
-       	 	def devDnataDocker = docker.build("faisal/DnataDocker")
+       	 	def devDnataDocker = docker.build("DnataDocker")
  		
 		docker.withRegistry('https://${env.account_number}.dkr.ecr.us-east-1.amazonaws.com', 'ecr:${login_details}') {
-        	docker.image('faisal/DnataDocker').push('latest');
-        	docker.image('faisal/DnataDocker').push("devBuild-${env.NODE_ENV}-${appVersion}")
+        	docker.image('DnataDocker').push('latest');
+        	docker.image('DnataDocker').push("devBuild-${env.NODE_ENV}-${appVersion}")
 		} 
     	}
 
