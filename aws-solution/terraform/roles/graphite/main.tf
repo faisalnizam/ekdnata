@@ -7,7 +7,7 @@ module "elb_sg" {
   source       = "../../modules/elb_sg"
   name         = "${var.role}-${var.environment}"
   environment  = "${var.environment}"
-  vpc_id       = "${data.aws_vpc.data_vpc.id}"
+  vpc_id       = "${data.aws_vpc.qa-vpc.id}"
   cluster_name = "graphite"
 }
 
@@ -26,7 +26,7 @@ module "elb" {
 module "sec_sg" {
   source = "../../modules/default_sg"
   name   = "${var.role}-${var.environment}-sg"
-  vpc_id = "${data.aws_vpc.data_vpc.id}"
+  vpc_id = "${data.aws_vpc.qa-vpc.id}"
 }
 
 module "ec2" {
@@ -42,7 +42,7 @@ module "ec2" {
   vpc_security_group_ids = "${module.sec_sg.default_sg}"
   role                   = "graphite"
   env                    = "${var.environment}"
-  vpc                    = "data_vpc"
+  vpc                    = "qa-vpc"
 
   user_data = "${path.module}/templates/graphite.tpl"
 }

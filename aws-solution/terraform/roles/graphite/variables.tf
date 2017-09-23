@@ -1,8 +1,8 @@
 data "aws_availability_zones" "available" {}
 
-data "aws_vpc" "data_vpc" {
+data "aws_vpc" "qa-vpc" {
   tags = {
-    Name = "data_vpc"
+    Name = "qa-vpc"
   }
 }
 
