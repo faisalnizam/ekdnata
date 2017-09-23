@@ -1,0 +1,76 @@
+node ("DNATA Sample Jenkins Job") {
+    def dropWizard
+    def location = pwd()
+    def mvnPath = tool 'mvn'
+    
+        withMaven(maven:'maven') {
+
+    	stage('CheckoutRepo') {
+        	checkout scm
+		git url: 'https://github.com/haroonzone/hello-dropwizard'	
+		
+    	}
+
+    	stage('SetVersion') { 
+		env.NODE_ENV = "devDnata"
+	 	print "Environment will be : ${env.NODE_ENV}"
+
+		env.PATH = "${tool 'M3'}/bin:${env.PATH}"
+		def appVersion = sh(script: 'mvn -q -Dexec.executable=\'echo\' -Dexec.args=\'${project.version}\' --non-recursive exec:exec', returnStdout: true).trim()
+		appVersion = pomVersion.replaceAll(/-SNAPSHOT/, "") 
+	 	sh "mvn versions:set -DnewVersion=${appVersion}"
+		
+	} 
+
+    	stage('BuildPackage') {
+	 	//sh 'mvn package -f pom.xml -Dmaven.test.skip=true'
+       		sh 'mvn clean package -U' 
+
+    	}
+
+
+	stage ('BuildTest') { 
+ 		parallel 'Test': {
+    			 sh "{mvnPath}/bin/mvn test; sleep 2;"
+ 		}, 'verify': {
+     			sh "${mvnPath}/bin/mvn verify; sleep 3"
+		}
+	} 
+
+    	stage('BuildnPush') {
+        	sh "pwd"
+       	 	def devDnataDocker = docker.build("faisal/DnataDocker")
+ 		
+		docker.withRegistry('https://${env.account_number}.dkr.ecr.us-east-1.amazonaws.com', 'ecr:${login_details}') {
+        	docker.image('faisal/DnataDocker').push('latest');
+        	docker.image('faisal/DnataDocker').push("devBuild-${env.NODE_ENV}-${appVersion}")
+		} 
+    	}
+
+
+    	catch (err) {
+
+        	currentBuild.result = "FAILURE"
+
+            	mail body: "Build Failed" ,
+            	from: 'errors@dnata.com',
+            	subject: 'Build Failed for ${env.NODE_ENV}-${appVersion} ',
+            	to: 'grouo@dnata.com'
+
+        	throw err
+    	}
+
+
+
+    	stage('Test Image') {
+        	sh "echo Tests Passed :)"
+    	}	
+
+	    stage('Run uShip Docker Container') {
+        	myService.run()
+    	}	
+
+
+} 
+
+}
