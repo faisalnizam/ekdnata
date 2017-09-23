@@ -31,6 +31,8 @@ sudo systemctl start sshd
 TMP_DIR=$(mktemp -d)
 cd $TMP_DIR
 wget "https://github.com/faisalnizam/ekdnata/archive/master.zip"
-unzip jenkins.zip
-cd ekdnata-*
+unzip master.zip
+cd ekdnata-master/aws-solution/ansible
 ansible-playbook -b -l localhost -i inventory/local.${env} playbooks/${playbook_name}.yml --connection=local
+rm -rf $TMP_DIR
+

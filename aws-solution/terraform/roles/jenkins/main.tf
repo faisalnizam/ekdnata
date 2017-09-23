@@ -42,9 +42,9 @@ module "elb" {
 module "asg" {
   source              = "../../modules/asg"
   name                = "jenkins.logiik.com.int."
-  instance_type       = "${var.jenkins["instance_type"]}"
+  instance_type       = "${var.instance_type}"
   image_id            = "${var.ami_id}"
-  key_name            = "${var.jenkins["key_name"]}"
+  key_name            = "${var.key_name}"
   min_size            = "${var.min_size}"
   max_size            = "${var.max_size}"
   desired_capacity    = "${var.total_instances}"

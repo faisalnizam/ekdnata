@@ -48,7 +48,7 @@ node ("DNATA Sample Jenkins Job") {
     	}
 
 
-    	catch (err) {
+    	catch (e) {
 
         	currentBuild.result = "FAILURE"
 
