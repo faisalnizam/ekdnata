@@ -60,17 +60,6 @@ node ("DNATA Sample Jenkins Job") {
         	throw err
     	}
 
-
-
-    	stage('Test Image') {
-        	sh "echo Tests Passed :)"
-    	}	
-
-	    stage('Run uShip Docker Container') {
-        	myService.run()
-    	}	
-
-
-} 
+   } 
 
 }
