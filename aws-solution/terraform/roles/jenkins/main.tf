@@ -56,6 +56,21 @@ module "asg" {
   availability_zones  = ["${var.availability_zones}"]
   user_data           = "${data.template_file.launch_jenkins.rendered}"
 
+  "iam_policy" = <<EOF
+{
+        "Version": "2012-10-17",
+        "Statement": [
+                {
+            "Effect": "Deny",
+            "Action": [
+                "ec2:DescribeInstances"
+            ],
+            "Resource": [ "*" ]
+        }
+        ]
+}
+EOF
+
   role = "Jenkins"
   env  = "${var.profile}"
   vpc  = "${var.vpc}"
