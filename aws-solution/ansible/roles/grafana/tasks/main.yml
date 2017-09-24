@@ -1,0 +1,25 @@
+---
+- name: install grafana deps
+  yum:
+    name: https://s3-us-west-2.amazonaws.com/grafana-releases/release/grafana-4.2.0-1.x86_64.rpm 
+    state: present
+  register: deps
+
+- name: service grafana
+  template:
+    src: grafana.ini.j2
+    dest: /etc/grafana/grafana.ini
+    owner: grafana
+    group: grafana
+  notify: restart grafana
+
+- name: installing plugin for grafana
+  command: grafana-cli plugins install {{item}}
+  with_items:
+   - cloudflare-app
+   - btplc-trend-dot-panel
+   - savantly-heatmap-panel
+   - vonage-status-panel
+  when: deps|succeeded
+  notify: restart grafana
+
