@@ -1,0 +1,6 @@
+prometheus_version: 1.5.2
+prometheus_path: /opt/prometheus
+prometheus_data_path: /data/prometheus
+data_device: /dev/xvdf
+prometheus_puller_url: "{{bootstrap_bucket}}/exporter/alerts_pull"
+alertmanager_url: "http://localhost:9093"

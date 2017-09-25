@@ -1,0 +1,128 @@
+---
+- name: install epel-release
+  yum:
+    name: "{{item}}"
+    state: present
+  register: deps
+  with_items:
+   - glibc.i686
+   - epel-release
+
+- name: install prometheus deps (disco)
+  yum:
+    name: python2-boto3
+    state: present
+  register: deps
+
+- name: Add group "prometheus"
+  group:
+    name: prometheus
+    system: yes
+  register: group
+
+- name: Add user "prometheus"
+  user:
+    shell: /sbin/nologin
+    group: prometheus
+    name: prometheus
+    system: yes
+  register: user
+
+- name: prometheus directory
+  file:
+    path: "{{item}}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: 0755
+  with_items:
+   - "{{prometheus_path}}/disco"
+   - "{{prometheus_path}}/alerts"
+   - "{{prometheus_data_path}} "
+  when: group|succeeded and user|succeeded
+  register: dirs
+
+- name: download prometheus
+  unarchive:
+    src: "https://github.com/prometheus/prometheus/releases/download/v{{prometheus_version}}/prometheus-{{prometheus_version}}.linux-amd64.tar.gz"
+    dest: "{{prometheus_path}}"
+    owner: prometheus
+    group: prometheus
+    copy: no
+  when: dirs|succeeded
+  notify: link to prometheus
+
+- name: rules puller
+  get_url:
+    url: "{{prometheus_puller_url}}"
+    dest: "{{prometheus_path}}/alerts_pull"
+    mode: 0755
+    owner: prometheus
+    group: prometheus
+  when: group|succeeded and user|succeeded
+
+- name: set cron for puller
+  cron:
+    minute: "*/10"
+    name: "prometheus rules puller"
+    job: "AWS_ACCESS_KEY_ID= AWS_SECRET_ACCESS_KEY= /bin/aws s3 cp s3://rules / /opt/prometheus/alerts --region ap-south-1 --recursive && chown prometheus -R /opt/prometheus/alerts/ && curl -X POST http://localhost:9090/-/reload"
+
+
+- name: discovery python script
+  template:
+    src: disco.py.j2
+    dest: "{{prometheus_path}}/disco.py"
+    mode: 0755
+    owner: prometheus
+    group: prometheus
+  when: group|succeeded and user|succeeded
+
+- name: set cron for discovery
+  cron:
+    minute: "*/10"
+    user: prometheus
+    name: "prometheus discovery"
+    job: "/usr/bin/python {{prometheus_path}}/disco.py 2>&1 |grep -v 'urllib3/connectionpool.py\\|InsecureRequestWarning'"
+
+- name: configure prometheus
+  template:
+    src: prometheus.service.j2
+    dest: /lib/systemd/system/prometheus.service
+  notify: reload prometheus
+
+- name: service prometheus
+  template:
+    src: prometheus.yml.j2
+    dest: "{{prometheus_path}}/prometheus.yml"
+    owner: prometheus
+    group: prometheus
+  when: group|succeeded and user|succeeded
+  notify: reload prometheus
+
+
+- name: create ext4 data FS
+  filesystem:
+    fstype: ext4
+    dev: "{{data_device}}"
+  register: data_created
+
+- name: Mount up data
+  mount:
+    name: /data
+    src: "{{data_device}}"
+    fstype: ext4
+    dump: 0
+    passno: 2
+    opts: defaults,nofail
+    state: mounted
+  when: data_created|succeeded
+  register: data_mounted
+
+- name: prometheus data directory
+  file:
+    path: "{{prometheus_data_path}}"
+    state: directory
+    owner: prometheus
+    group: prometheus
+  when: data_mounted|succeeded
+  notify: reload prometheus

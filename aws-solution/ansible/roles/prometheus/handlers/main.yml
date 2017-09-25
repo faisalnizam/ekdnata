@@ -1,0 +1,27 @@
+---
+- name: link to prometheus
+  file:
+    src:  "{{prometheus_path}}/prometheus-{{prometheus_version}}.linux-amd64/prometheus"
+    dest: "{{prometheus_path}}/prometheus"
+    state: link
+    owner: prometheus
+    group: prometheus
+  notify: reload prometheus
+
+- name: reload prometheus
+  systemd:
+    name: prometheus
+    enabled: yes
+    daemon_reload: yes
+    state: reloaded
+  notify: restart prometheus
+  register: reloaded
+  ignore_errors: yes
+
+- name: restart prometheus
+  systemd:
+    name: prometheus
+    enabled: yes
+    daemon_reload: yes
+    state: restarted
+  when: reloaded|failed

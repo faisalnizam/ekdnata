@@ -1,0 +1,7 @@
+
+[Unit]
+Description=node_exporter - Exporter for machine metrics.
+After=network.target
+
+[Service]
+ExecStart={{node_exporter_path}}/node_exporter -web.listen-address :32001

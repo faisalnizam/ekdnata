@@ -1,0 +1,16 @@
+[Unit]
+Description=Prometheus
+After=network.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+WorkingDirectory={{prometheus_path}}
+ExecStart={{prometheus_path}}/prometheus -config.file {{prometheus_path}}/prometheus.yml -storage.local.path {{prometheus_data_path}} -alertmanager.url {{alertmanager_url}}
+Restart=on-failure
+SyslogIdentifier=prometheus
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

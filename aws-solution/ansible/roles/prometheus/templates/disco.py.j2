@@ -1,0 +1,201 @@
+#!/usr/bin/env python
+
+import json
+import re
+import sys
+import yaml
+
+import boto3
+import requests
+import logging
+
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+
+
+PATH="{{prometheus_path}}"
+MASTER_ENDPOINT="{{dcos_endpoint}}"
+USER="{{dcos_user}}"
+PASSWORD="{{dcos_password}}"
+
+config = {
+    "mesos": {
+        "type":"ec2",
+        "port":32002,
+        "attribut":"name",
+        "match":"dcos"
+    },
+    "haproxy":{
+        "type":"ec2",
+        "port":32003,
+        "attribut":"name",
+        "match":"public"
+    },
+    "jmx":{
+        "type":"ec2",
+        "port":{{jmx_exporter_port}},
+        "attribut":"name",
+        "match":"elasticsearch|zookeeper|kafka|cassandra"
+    },
+    "jmx2":{
+        "type":"ec2",
+        "port":32003,
+        "attribut":"name",
+        "match":"elasticsearch|zookeeper|kafka|cassandra"
+    },
+    "node":{
+        "type":"ec2",
+        "port":32001,
+        "attribut":"name",
+        "match":""
+    },
+    "apps":{
+        "type":"marathon",
+        "attribut":"id",
+        "match":""
+    },
+    "couchbase":{
+        "type":"ec2",
+        "port":32002,
+        "attribut":"name",
+        "match":"couchbase"
+    },
+    "linkerd":{
+        "type":"marathon",
+        "attribut":"id",
+        "match":"linkerd"
+    }
+    "mysql":{
+        "type":"database",
+        "attribut":"db",
+        "match":"mysql"
+    }
+}
+output = {}
+
+# ec4 
+attribut_map = {
+    "name":lambda x : "".join([item["Value"] for item in x["Tags"] if item["Key"] == "Name"]),
+    "vpc":lambda x : x["VpcId"]
+    "name":lambda x : "".join([item["Value"] for item in x["Tags"] if item["Key"] == "mysql"]),
+
+}
+
+ec2 = boto3.client('ec2',region_name="{{region}}")
+req = ec2.describe_instances(
+    Filters=[{'Name': 'instance-state-name', 'Values': ['running']}])
+instances = [i for r in req["Reservations"] for i in r["Instances"] ]
+
+def get_ec2(conf, instances):
+    result = []
+    for i in instances:
+        try:
+            try:
+                attribut = attribut_map[conf["attribut"]](i)
+            except:
+                attribut = i[conf["attribut"]]
+            if any([t.get("Key","").lower() == "orchestration" and t.get("Value","").lower() == "false" for t in i.get("Tags",[]) ]):
+                    continue
+            if prod.match(attribut):
+                labels={
+                        "private_ip": i["PrivateIpAddress"],
+                        "alias": i["PrivateIpAddress"],
+                        "availability_zone":i["Placement"]["AvailabilityZone"],
+                        "instance_id": i["InstanceId"],
+                        "instance_type": i["InstanceType"],
+                        "subnet_id":i["SubnetId"],
+                        "vpc_id": i["VpcId"]
+                    }
+                labels.update(dict((format_label("tag_%s"%item["Key"]), item["Value"])for item in i["Tags"]))
+                role = labels.get("tag_Role","")
+                if len(role) and conf["port"] != 32001: # not node_exporter
+                    labels["job"] = role
+                result.append({
+                    "targets":["%s:%d" %(i["PrivateIpAddress"],conf["port"])],
+                    "labels": labels
+                })
+        except Exception as e:
+            print("ec2 issues %s: %s %s" %(conf,e, i["InstanceId"]))
+    return result
+
+def format_label(label):
+   return re.sub('[^a-zA-Z0-9_]','_', label)
+# marathon
+
+apps = []
+for master_endpoint in MASTER_ENDPOINT.split(','):
+    try:
+        # auth
+        response = requests.post(
+            master_endpoint + '/acs/api/v1/auth/login',
+            headers={'Content-type': 'application/json'},
+            data=json.dumps({'uid' : USER, 'password' : PASSWORD}),
+            verify=False
+        ).json()
+        auth_token=response['token']
+        # apps
+        response = requests.get(
+            master_endpoint + '/service/marathon/v2/apps/?embed=apps.tasks',
+            headers={
+                'Authorization': 'token='+auth_token,
+                'Content-type': 'application/json'
+            },
+            verify=False
+        ).json()
+        for app in response['apps']:
+            app['endpoint'] = master_endpoint
+        apps.extend(response['apps'])
+    except TypeError:
+        pass
+    except Exception as e:
+        print("marathon issues %s",e)
+
+def get_marathon(conf, apps):
+    result = []
+    for app in apps:
+        try:
+            if prod.match(str(app[conf["attribut"]])):
+                image = app.get("container", {}).get("docker",{}).get("image","") if app["container"] else ""
+                labels={
+                        "app": app["id"],
+                        "image": image,
+                        "endpoint": app["endpoint"]
+                    }
+                labels.update(dict((format_label("label_%s"%key), value) for key,value in app["labels"].items() if not any(k in key for k in ["HAPROXY","DCOS"]) ))
+                for task in app.get("tasks", []):
+                    final_labels = {
+                        "task": task["id"],
+                        "alias": task["id"],
+                        "host": task["host"]
+                    }
+                    final_labels.update(labels)
+                    result.append({
+                        "targets":["%s:%d" %(task["host"], task["ports"][0])],
+                        "labels": final_labels
+                    })
+        except Exception as e:
+            print("marathon issues %s: %s %s %s" %(conf,e,app["id"],sys.exc_info()[-1].tb_lineno))
+    return result
+
+data_value = {
+    "marathon": apps,
+    "ec2": instances
+}
+
+func_type= {
+    "marathon": get_marathon,
+    "ec2": get_ec2
+}
+
+for name, conf in config.items():
+    prod = re.compile(".*%s.*" % conf["match"])
+    try:
+        output[name] = func_type[conf["type"]](conf, data_value[conf["type"]])
+    except Exception as e:
+        print("conf issues %s: %s" %(conf,e))
+
+for name in config.keys():
+    with open("%s/disco/%s.yml" % (PATH, name),"w") as yml_file:
+        yml_file.write(yaml.safe_dump(output.get(name,""), default_flow_style=False))
+
+    #print(name,len(output[name]))
+    #print(yaml.safe_dump(output.get(name,[]), default_flow_style=False))
