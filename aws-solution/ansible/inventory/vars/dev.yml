@@ -1,0 +1,8 @@
+---
+env: dev
+region: eu-west-1
+monlog_grafana_password: "grafana"
+monlog_endpoint: "temp.rds.mansit.co.uk:3306"
+bootstrap_bucket: https://s3.ap-south-1.amazonaws.com/bootstrap.dev
+monitoring_path: /opt/prometheus
+

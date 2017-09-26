@@ -35,4 +35,5 @@ unzip master.zip
 cd ekdnata-master/aws-solution/ansible
 ansible-playbook -b -l localhost -i inventory/local.${env} playbooks/${playbook_name}.yml --connection=local
 rm -rf $TMP_DIR
+ansible-galaxy install gantsign.maven
 

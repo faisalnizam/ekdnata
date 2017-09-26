@@ -3,3 +3,5 @@
   roles:
     - java 
     - dnata_jenkins
+    - mvn
+    - node_exporter

@@ -1,0 +1,7 @@
+- hosts: all
+  vars:
+      - grafana_database_url: mysql://grafana:{{monlog_grafana_password}}@{{monlog_endpoint}}/grafana
+  roles:
+    - prometheus
+    - grafana
+    - node_exporter

@@ -18,8 +18,7 @@ module "elb" {
   security_groups = ["${module.elb_sg.elb_sg_id}"]
   subnets         = ["${var.public_subnet_id}"]
 
-  //ssl_certificate_id = "arn:aws:acm:eu-central-1:319584929632:certificate/1582b471-6808-4beb-9f65-0b97ea189eb7"
-  ssl_certificate_id = "arn:aws:acm:eu-central-1:433703733157:certificate/182a45ce-c132-4336-965d-66ac977d76cf"
+  ssl_certificate_id = ""
   cluster_name       = "graphite"
 }
 
