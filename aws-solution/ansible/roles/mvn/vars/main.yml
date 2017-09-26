@@ -1,0 +1,4 @@
+---
+
+maven_package_filename: "apache-maven-{{ maven_version }}-bin.tar.gz"
+remote_ansible_data_path: "/usr/local/src/ansible/data"

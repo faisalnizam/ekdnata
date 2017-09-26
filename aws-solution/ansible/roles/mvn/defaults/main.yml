@@ -1,0 +1,6 @@
+---
+
+maven_version: "3.3.1"
+maven_mirror_url_binaries: "http://archive.apache.org/dist/maven/maven-{{ maven_version|regex_replace('\\..*', '') }}/{{ maven_version }}/binaries"
+maven_install_dir: /opt/maven
+maven_bin_path: "/usr/local/bin"

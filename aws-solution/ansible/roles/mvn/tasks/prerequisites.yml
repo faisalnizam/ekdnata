@@ -1,0 +1,22 @@
+---
+
+- name: Make sure Ansible remote data path for downloads exists
+  file:
+    dest: "{{ remote_ansible_data_path }}"
+    state: directory
+
+- name: Make sure Maven installation path exists
+  file:
+    dest: "{{ maven_install_dir }}"
+    state: directory
+    owner: 0
+    group: 0
+    mode: 0755
+
+- name: Make sure the {{ maven_bin_path }} exists
+  file:
+    dest: "{{ maven_bin_path }}"
+    state: directory
+    owner: 0
+    group: 0
+    mode: 0755
