@@ -12,6 +12,8 @@ yum install -y vim
 yum install -y wget
 yum install -y telnet
 yum install -y nmap
+yum install -y git 
+
 
 # -------------------------------
 # Install Necessary Applications
